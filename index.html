@@ -59,6 +59,7 @@ img {
     background-color: #0098e0;
     bottom: 20px;
     right: 30px;
+    display:none;
 }
 
 </style>
@@ -472,8 +473,37 @@ document.onkeypress = function(e) {
     if(getCaretTopPoint().top >= 400) {
         window.scrollBy(0,100)
     }
+
+     
 }
 
+var isEditable = true
+var textarea = document.getElementById("main-txtbox");
+var masterTitle = document.title;
+
+document.onkeyup = function(e) {
+  
+  //Ctrl+. : Create New Node
+  if (e.ctrlKey && e.which == 190) {
+
+        isEditable = !isEditable
+        textarea.contentEditable = isEditable
+        if(isEditable){
+            textarea.focus();
+            textarea.blur();
+            document.title =  "Unlocked";
+        }
+        else{
+            document.title =  "Locked";
+        }
+
+        setTimeout(function(){
+            document.title = masterTitle
+        }, 1000);
+
+        
+    }
+}
 
 
         
