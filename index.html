@@ -2,9 +2,9 @@
 
 <html>
 <head>
-	<link rel="icon" href="r/logo.png" type="image/x-icon">
-	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title>rtnF</title>
+    <link rel="icon" href="r/logo.png" type="image/x-icon">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>rtnF</title>
 
 <style>
 @font-face {
@@ -19,12 +19,12 @@ html {
 }
 
 :focus {
-	outline: none;
+    outline: none;
 }
 
 a {
-	text-decoration: none;
-	color: #0983bf;
+    text-decoration: none;
+    color: #0983bf;
 }
 
 
@@ -46,9 +46,19 @@ max-width: 750px;
 }
 
 img {
-	max-width: 100%;
-	height: auto;
+    max-width: 100%;
+    height: auto;
 
+}
+
+#add_button{
+	    position: fixed;
+    width: 60px;
+    height: 60px;
+    border-radius: 200px;
+    background-color: #0098e0;
+    bottom: 20px;
+    right: 30px;
 }
 
 </style>
@@ -62,6 +72,7 @@ img {
 <!-- <div><textarea id="main-txtbox" name="body" rows="20" cols="80">{{printf "%s" .Body}}</textarea></div> -->
 <div id="main-txtbox" contenteditable></div>
 
+<div id="add_button" onclick="switchdx()"></div>
 
 </body>
 
@@ -72,9 +83,11 @@ img {
                         window.webkitIndexedDB ||
                         window.mozIndexedDB;
 
+
+
         function DB(name) {
             this.init = function(version, upgrade, done) {
-                console.log('init');
+                
                 var openReq = indexedDB.open(name, version);
                 openReq.onsuccess = function(e) {
                     var db = e.target.result;
@@ -159,6 +172,20 @@ img {
         var contactsStoreName = 'contacts';
         var latest = ""
         var contactsDB = new DB(databaseName);
+        var keydoc = "name"
+
+        const queryString = window.location.search
+        const urlParams = new URLSearchParams(queryString)
+        if (urlParams.get('k')){
+        	keydoc = urlParams.get('k')
+        	console.log(keydoc)
+        }
+
+        function switchdx(){
+        	var targetkey = prompt("Insert key")
+        	window.location.href = window.location.hostname + "?k=" + targetkey
+        }
+
 
         var contacts = document.getElementById('contacts');
 
@@ -190,19 +217,32 @@ img {
         }
 
         function addContactToTable(contact) {
-        	
-            latest = contact.email
-            document.getElementById('main-txtbox').innerHTML = latest;
+            if (contact.name == keydoc) {
+            	latest = contact.email
+            document.getElementById('main-txtbox').innerHTML = latest;	
+            }
+            
         }
 
         var nameInput = "main"
         var emailInput = document.getElementById('main-txtbox');
 
       
+        function qsave(){
+            contactsDB.readWrite([ contactsStoreName ], function(tx) {
+                var contact = {
+                    name: keydoc,
+                    email: document.getElementById('main-txtbox').innerHTML
+                };
+                tx.objectStore(contactsStoreName).put(contact);
+               
+            }, function() {
+            });
 
+        }
 
         function save() {
-        	var name = "name"
+            var name = keydoc
             var email = document.getElementById('main-txtbox').innerHTML
        
 
@@ -221,11 +261,49 @@ img {
                 console.log('added');
                 latest = email
             });
-        	}
+
+
+            }
 
         }
 
-        var intervalID = setInterval(function(){save(1)},20000)
+        var intervalID = setInterval(function(){
+
+            contactsDB.readWrite([ contactsStoreName ], function(tx) {
+              
+                var countReq = tx.objectStore(contactsStoreName).count()
+                countReq.onsuccess = function() {
+
+                    if (countReq.result > 40) {
+                    tx.objectStore(contactsStoreName).clear()
+                    var name = keydoc
+                    var email = document.getElementById('main-txtbox').innerHTML
+                      var contact = {
+                    name: name,
+                    email: email
+                };
+                    tx.objectStore(contactsStoreName).put(contact);
+                    console.log("cleared!")
+                    latest = email    
+                }
+                else{
+                    console.log(countReq.result)
+                }
+
+                }
+
+
+
+                
+                
+               
+            }, function() {
+                                
+            });
+            save()
+
+
+        },1000)
 
 
  var div = document.getElementById('main-txtbox');
@@ -236,7 +314,7 @@ setTimeout(function() {
 
    
 window.addEventListener('beforeunload', (event) =>{
-    save()
+    qsave()
 })
 
 
@@ -277,11 +355,126 @@ function getCaretTopPoint() {
       }
     }
     
+
+     
+
+//Will fill LinkNode with <a> node
+function wiki2html(s) {
+    s = this;
+    s = s.replace(/\[\[(.*?)\]\]/g, function (m, l) { // internal link or image
+        var p = l.split(/\|/);
+        var link = p.shift();
+        LinkNode = '<a contenteditable="false" href="?k=' + link + '">' + (p.length ? p.join('|') : link) + '</a>';
+      
+        //LinkNode = htmlToElement(constructedString);
+        return '<a contenteditable="false" href="?k=' + link + '">' + (p.length ? p.join('|') : link) + '</a>';
+        //return '';
+    })
+    return s
+}
+
+//Will remove the [[link]] syntax
+function wiki2html2(s) {
+    s = this;
+    s = s.replace(/\[\[(.*?)\]\]/g, function (m, l) { // internal link or image
+        var p = l.split(/\|/);
+        var link = p.shift();
+        //return '<a contenteditable="false" href="' + link + '">' + (p.length ? p.join('|') : link) + '</a>';
+        return '';
+    })
+    return s
+}
+
+var linkCloserCounter = 0
+
+var a,b
+
+function pasteHtmlAtCaret(html) {
+    var sel, range;
+    if (window.getSelection) {
+        // IE9 and non-IE
+        sel = window.getSelection();
+        if (sel.getRangeAt && sel.rangeCount) {
+            range = sel.getRangeAt(0);
+            range.deleteContents();
+
+            // Range.createContextualFragment() would be useful here but is
+            // non-standard and not supported in all browsers (IE9, for one)
+            var el = document.createElement("div");
+            el.innerHTML = html;
+            var frag = document.createDocumentFragment(), node, lastNode;
+            while ( (node = el.firstChild) ) {
+                lastNode = frag.appendChild(node);
+            }
+            range.insertNode(frag);
+            
+            // Preserve the selection
+            if (lastNode) {
+                range = range.cloneRange();
+                range.setStartAfter(lastNode);
+                range.collapse(true);
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }
+        }
+    } else if (document.selection && document.selection.type != "Control") {
+        // IE < 9
+        document.selection.createRange().pasteHTML(html);
+    }
+}
+
+
+
+function moveCaret(win, charCount) {
+    var sel, range;
+    if (win.getSelection) {
+        sel = win.getSelection();
+        if (sel.rangeCount > 0) {
+            var textNode = sel.focusNode;
+            var newOffset = sel.focusOffset + charCount;
+            sel.collapse(textNode, Math.min(textNode.length, newOffset));
+        }
+    } else if ( (sel = win.document.selection) ) {
+        if (sel.type != "Control") {
+            range = sel.createRange();
+            range.move("character", charCount);
+            range.select();
+        }
+    }
+}
+
+String.prototype.wiki2html = wiki2html;
+String.prototype.wiki2html2 = wiki2html2;
+
 document.onkeypress = function(e) {
+	if (e.key == ']'){
+			linkCloserCounter = linkCloserCounter + 1
+		}
+		else if ((linkCloserCounter == 2) && (e.charCode == 32)) { 
+	        linkCloserCounter = 0
+	        a = window.getSelection().anchorNode;
+	        //Save old text
+	        var old_html = a.nodeValue
+	        //Delete the [[this]] part
+	        a.nodeValue = a.nodeValue.wiki2html2();
+	        //Move the caret forward
+	        moveCaret(window,a.nodeValue.length)
+	        //Doing this will fill "LinkNode" to an <a> node
+	        var c = old_html.wiki2html()
+	        //Paste <a> node at current caret
+	        pasteHtmlAtCaret(LinkNode);
+	        //Async-save
+	        qsave()
+		}
+		else {
+			linkCloserCounter = 0
+		}
     if(getCaretTopPoint().top >= 400) {
         window.scrollBy(0,100)
     }
 }
-     
+
+
+
         
     </script>
